@@ -1,4 +1,4 @@
-#include <message.h>
+#include <message_client.h>
 #include <thread>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -9,6 +9,7 @@
 #include <mutex>
 #include <netdb.h>
 #include <create_torrent.h>
+#include <respond_to_request_client.h>
 
 vector<string> split_string(string str){
     string temp;
@@ -118,12 +119,12 @@ void get_file(string path_to_mtorrent_file, string destination_path){
     currently_downloading_files.insert(destination_path);
     currently_downloading_files_mutex.unlock();
     cout<<response;
-    std :: thread T(manage_download_file, destination_path);
+    std :: thread T(manage_download_file, response);
     T.detach();
     return;
 }
 
-void handle_connection(int new_socket_fd,sockaddr_in *client_addrress){
+void handle_incoming_request(int new_socket_fd,sockaddr_in *client_addrress){
     Message message;
     string encoded_message;
     while(true){
@@ -136,13 +137,31 @@ void handle_connection(int new_socket_fd,sockaddr_in *client_addrress){
             message.reload({"ERROR","didn't recieve the message properly"});
             encoded_message = message.encode_message();
         }
-        if(request[0] == "CLOSE"){
+        else if(request[0] == "CLOSE"){
             log_file_descriptor.lock();
             cerr<<"Connection gracefully closed by client : "<<inet_ntoa(client_addrress->sin_addr)<<":"<<ntohs(client_addrress->sin_port)<<endl;
             log_file_descriptor.unlock();
             close(new_socket_fd);
             //message.reload({"ERROR","didn't recieve the message properly"});
             return;
+        }
+        else if(request[0] == "SEND_FILE_DETAILS"){
+            log_file_descriptor.lock();
+            details_of_file_mutex.lock();
+            cerr<<"SENDING details of file asked by : "<<inet_ntoa(client_addrress->sin_addr)<<":"<<ntohs(client_addrress->sin_port)<<endl;
+            encoded_message = send_details(details_of_file, request[1]);
+            details_of_file_mutex.unlock();
+            log_file_descriptor.unlock();
+            send(new_socket_fd, encoded_message.c_str(), encoded_message.length(), 0);
+            return;
+        }
+        else if(request[0] == "SEND_FILE"){
+            log_file_descriptor.lock();
+            details_of_file_mutex.lock();
+            cerr<<"SENDING file asked by : "<<inet_ntoa(client_addrress->sin_addr)<<":"<<ntohs(client_addrress->sin_port)<<endl;
+            encoded_message = send_file(details_of_file, request);
+            details_of_file_mutex.unlock();
+            log_file_descriptor.unlock();
         }
         send(new_socket_fd, encoded_message.c_str(), encoded_message.length(), 0);
     }

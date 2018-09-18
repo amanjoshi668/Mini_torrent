@@ -2,8 +2,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#ifndef MESSAGE_H
-#define MESSAGE_H
+#ifndef MESSAGE_SERVER_H
+#define MESSAGE_SERVER_H
 
 struct Message{
     lo no_of_fields;
