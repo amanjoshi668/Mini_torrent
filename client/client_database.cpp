@@ -71,7 +71,6 @@ torrent_for_map generate_torrent(string Tracker_1_url, string Tracker_2_url, str
     lo bytes_read;
     while ((bytes_read = fread(buffer, 1, BUFFER_SIZE, file)) > 0)
     {
-        lo x = rand() % 4;
         unsigned char *conbuf = (unsigned char *)buffer;
         unsigned char hash[HASH_SIZE];
         //debug(buffer);
@@ -80,14 +79,22 @@ torrent_for_map generate_torrent(string Tracker_1_url, string Tracker_2_url, str
         for (int i = 0; i < SHA_DIGEST_LENGTH; i++)
             sprintf(&mdString[i * 2], "%02x", (unsigned int)hash[i]);
         SHA_hash += string(mdString);
-        if (x)
-            temp.pb(1);
     }
     //debug(SHA_hash);
     fclose(file);
 
     lo file_size = filesize(file_name.c_str());
-
+    unsigned char *conbuf = (unsigned char *)SHA_hash.c_str();
+    unsigned char hash[HASH_SIZE];
+    //debug(buffer);
+    SHA1(conbuf, bytes_read, hash);
+    char mdString[SHA_DIGEST_LENGTH * 2 + 1];
+    for (int i = 0; i < SHA_DIGEST_LENGTH; i++)
+        sprintf(&mdString[i * 2], "%02x", (unsigned int)hash[i]);
+    SHA_hash.clear();
+    SHA_hash += string(mdString);
+    //if (x)
+    temp.pb(1);
     ofstream fout;
     string full_file_name = file_name_torrent;
     fout.open(full_file_name, ios::out);
@@ -98,6 +105,8 @@ torrent_for_map generate_torrent(string Tracker_1_url, string Tracker_2_url, str
     fout << SHA_hash << endl;
     fout.close();
     generated_details.location = SHA_hash;
-    generated_details.part_of_file = temp;
+    lo num_of_parts = (file_size+BUFFER_SIZE-1)/BUFFER_SIZE;
+    generated_details.part_of_file.resize(num_of_parts);
+    fill(all(generated_details.part_of_file),1);
     return generated_details;
 }

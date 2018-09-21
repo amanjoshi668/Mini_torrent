@@ -37,7 +37,7 @@ mutex currently_downloading_files_mutex;
 map<string, vector<string>> list_of_part_contained;
 mutex list_of_part_contained_mutex;
 
-void get_files_by_part(string tracker_url, string hash_string, vector<string> part_no)
+void get_files_by_part(string tracker_url, string hash_string, vector<string> part_no, string file_path)
 {
     log_file_descriptor.lock();
     cerr << "Trying to connect to " << tracker_url << endl;
@@ -68,6 +68,7 @@ void get_files_by_part(string tracker_url, string hash_string, vector<string> pa
         log_file_descriptor.unlock();
     }
     lo count = 0;
+    std::FILE *fp = std::fopen(file_path.c_str(), "wb");
     REP(0, part_no.size())
     {
         string part = part_no[i];
@@ -77,10 +78,14 @@ void get_files_by_part(string tracker_url, string hash_string, vector<string> pa
         //derr(encoded_message);
         send(client_so_fd, encoded_message.c_str(), encoded_message.length(), 0);
         auto response = message.decode_message(client_so_fd);
-
+        derr2(stoll(part), response[1]);
         if (response[0] == "SUCCESS")
         {
-            
+            fseek(fp, stoll(part) * BUFFER_SIZE, SEEK_SET);
+            std::fwrite(response[1].data(), sizeof('a'), response[1].length(), fp);
+            details_of_file_mutex.lock();
+            details_of_file[hash_string].part_of_file[stoll(part)] = 1;
+            details_of_file_mutex.unlock();
         }
         else
         {
@@ -90,6 +95,8 @@ void get_files_by_part(string tracker_url, string hash_string, vector<string> pa
             i--;
         }
     }
+    std::fclose(fp);
+    close(client_so_fd);
 }
 
 void get_file_details(string tracker_url, string hash_string)
@@ -161,21 +168,32 @@ void do_join(std ::thread &t)
     t.join();
 }
 
-void schedule(lo number_of_parts)
+void schedule()
 {
+    cerr << endl;
+    cerr << "***************************" << endl;
+    cerr << "***************************" << endl;
+    debug(list_of_part_contained.size());
+    TRV(list_of_part_contained)
+    derr(it);
+    cerr << "***************************" << endl;
+    cerr << "***************************" << endl;
+
     map<string, vector<string>> scheduled_map;
     set<string> processed;
     while (!list_of_part_contained.empty())
     {
-        lo remaining_strings = 0;
         vector<string> to_remove;
         TRV(list_of_part_contained)
         {
             if (present(processed, it.Y.back()))
             {
-                it.Y.pop_back();
+                while (!it.Y.empty() and present(processed, it.Y.back()))
+                {
+                    it.Y.pop_back();
+                }
             }
-            else
+            if (!it.Y.empty())
             {
                 processed.insert(it.Y.back());
                 if (present(scheduled_map, it.X))
@@ -202,9 +220,20 @@ void schedule(lo number_of_parts)
         }
     }
     swap(list_of_part_contained, scheduled_map);
+
+    cerr << endl;
+    cerr << "***************************" << endl;
+    cerr << "***************************" << endl;
+    debug(list_of_part_contained.size());
+    TRV(list_of_part_contained)
+    derr(it);
+    cerr << "***************************" << endl;
+    cerr << "***************************" << endl;
+
+    return;
 }
 
-void manage_download_file(vector<string> list_of_clients, lo number_of_parts)
+void manage_download_file(vector<string> list_of_clients)
 {
     cout << endl
          << endl;
@@ -221,7 +250,7 @@ void manage_download_file(vector<string> list_of_clients, lo number_of_parts)
     std ::for_each(all_threads.begin(), all_threads.end(), do_join);
     TRV(list_of_part_contained)
     derr(it);
-    schedule(number_of_parts);
+    schedule();
     all_threads.clear();
     REP(1, list_of_clients.size() - 1)
     {
@@ -364,9 +393,12 @@ void get_file(string path_to_mtorrent_file, string destination_path, string clie
     currently_downloading_files.insert(destination_path);
     currently_downloading_files_mutex.unlock();
 
-    lo number_of_parts = (entry_to_download.filesize + BUFFER_SIZE - 1) / BUFFER_SIZE;
+    // std::ofstream file(destination_path);
+    // file.seekp(entry_to_download.filesize);
+    // file << '\0';
+    // file.close();
 
-    std ::thread T(manage_download_file, response, number_of_parts);
+    std ::thread T(manage_download_file, response);
     T.detach();
     //share_without_creating_file(client_ip, destination_path, path_to_mtorrent_file, entry_to_download);
     return;
