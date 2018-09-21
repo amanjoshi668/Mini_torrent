@@ -69,7 +69,7 @@ template<typename T> istream& operator>> ( istream &in,pair <T,T> &p ) {
     in>>p.Y;
     return in;
 }
-#define BUFFER_SIZE 524288
+#define BUFFER_SIZE 10
 #define HASH_SIZE 20
 namespace fs = std::experimental::filesystem;
 #endif

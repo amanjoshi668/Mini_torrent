@@ -68,7 +68,7 @@ void handle_connection(int new_socket_fd,sockaddr_in *client_addrress){
             hash_vs_seeder_ip_port_mutex.unlock();
             log_file_descriptor.unlock();
         }
-        debug(encoded_message);
+        //debug(encoded_message);
 
         hash_vs_seeder_ip_port_mutex.lock();
         TRV(hash_vs_seeder_ip_port){
@@ -79,7 +79,7 @@ void handle_connection(int new_socket_fd,sockaddr_in *client_addrress){
             cerr<<endl;
         }
         hash_vs_seeder_ip_port_mutex.unlock();
-
+        cerr<<encoded_message<<endl;
         send(new_socket_fd, encoded_message.c_str(), encoded_message.length(), 0);
     }
 }

@@ -1,4 +1,5 @@
-#include<message_server.h>
+#include <message_server.h>
+
 Message :: Message(initializer_list <string> list){
     this->no_of_fields = 0;
     this->fields_content.clear();
@@ -69,9 +70,11 @@ void Message :: clear(){
 }
 
 vector<string> Message :: decode_message(int file){
-    this->clear();
-    char *long_buffer = new char [sizeof(this->no_of_fields)];
-    auto result = recv(file, long_buffer, sizeof(lo), 0);
+    this->clear();  
+    char long_buffer [sizeof(lo)];
+    memset(long_buffer, 0, sizeof(long_buffer));
+    auto result = read(file, long_buffer, sizeof(lo));
+    //derr(long_buffer);
     if(result < 0 ){
         this->clear();
         return this->fields_content;
@@ -82,20 +85,28 @@ vector<string> Message :: decode_message(int file){
         return this->fields_content;
     }
     this->no_of_fields = stoll(string(long_buffer));
+    cout<<"I have recieved the message"<<endl;
     REP(0,this->no_of_fields){
-        result = recv(file, long_buffer, sizeof(lo), 0);
+        memset(long_buffer, 0, sizeof(long_buffer));
+        result = read(file, long_buffer, sizeof(lo));
         if(result < 0){
             this->clear();
             return this->fields_content;
         }
+        //derr(long_buffer);
         this->fields_size.pb(stoll(string(long_buffer)));
-        char *field_buffer = new char [this->fields_size.back()];
-        result = recv(file, field_buffer,this->fields_size.back(), 0);
+        //derr(this->fields_size.back());
+        char field_buffer [this->fields_size.back()];
+        memset(field_buffer, 0, sizeof(field_buffer));
+        result = read(file, field_buffer,this->fields_size.back());
         if(result < 0){
             this->clear();
             return this->fields_content;
         }
-        this->fields_content.pb(string(field_buffer));
+        string temp_field_buffer = string(field_buffer);
+        //derr2(temp_field_buffer,temp_field_buffer.length());
+        //derr(temp_field_buffer.substr(0,this->fields_size.back()));
+        this->fields_content.pb(temp_field_buffer.substr(0,this->fields_size.back()));
     }
     return this->fields_content;
 }

@@ -19,7 +19,9 @@
         "mutex": "cpp",
         "shared_mutex": "cpp",
         "*.cuh": "cpp",
-        "forward_list": "cpp"
+        "forward_list": "cpp",
+        "array": "cpp",
+        "future": "cpp"
     },
     "C_Cpp.dimInactiveRegions": false
 }
