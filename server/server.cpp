@@ -224,18 +224,22 @@ void handle_connection(int new_socket_fd, sockaddr_in *client_addrress)
             encoded_message = dump(hash_vs_seeder_ip_port);
             hash_vs_seeder_ip_port_mutex.unlock();
         }
-        else if(request[0] == "CLOSEAPPLICATION"){
-            vector<pair<string,string> > to_remove;
+        else if (request[0] == "CLOSEAPPLICATION")
+        {
+            vector<pair<string, string>> to_remove;
             hash_vs_seeder_ip_port_mutex.lock();
-            TRV(hash_vs_seeder_ip_port){
-                if(it.Y.find(request[1])!=it.Y.end()){
+            TRV(hash_vs_seeder_ip_port)
+            {
+                if (it.Y.find(request[1]) != it.Y.end())
+                {
                     it.Y.erase(request[1]);
                     to_remove.push_back(mp(it.X, request[1]));
                 }
             }
             hash_vs_seeder_ip_port_mutex.unlock();
-            TRV(to_remove){
-                Message message({"SHAREREMOVE",it.X, it.Y});
+            TRV(to_remove)
+            {
+                Message message({"SHAREREMOVE", it.X, it.Y});
                 inform_other_tracker(message.encode_message());
             }
         }
@@ -283,7 +287,7 @@ int main(int argc, char *argv[])
     string log_file = string(argv[4]);
     //////
 
-    freopen(log_file.c_str(),"w",stdout);
+    freopen(log_file.c_str(), "w", stderr);
 
     if (!load_from_other_tracker())
     {
@@ -353,7 +357,7 @@ int main(int argc, char *argv[])
         else
         {
             log_file_descriptor.lock();
-            cerr << "Connected to " << inet_ntoa(client_address.sin_addr) << ":" << ntohs(client_address.sin_port) << endl;
+            cout << "Connected to " << inet_ntoa(client_address.sin_addr) << ":" << ntohs(client_address.sin_port) << endl;
             log_file_descriptor.unlock();
         }
 

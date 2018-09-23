@@ -7,7 +7,7 @@ OBJ = server.o message_server.o respond_to_request_server.o
 %.o: %.cpp $(DEPS)
 	$(CC) $(CFLAGS) -I. -c -o $@ $<
 
-server: $(OBJ)
+tracker: $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean :

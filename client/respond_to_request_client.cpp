@@ -4,6 +4,7 @@ string send_details(map<string, torrent_for_map> &details_of_file, string &file_
 {
     vector<string> result;
     Message message;
+    debug(details_of_file[file_name].part_of_file);
     if (!present(details_of_file, file_name))
     {
         cerr << "The requested file is not present" << endl;

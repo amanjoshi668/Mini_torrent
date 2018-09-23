@@ -96,7 +96,7 @@ istream &operator>>(istream &in, pair<T, T> &p)
     return in;
 }
 #define TORRENT_PATH string
-#define BUFFER_SIZE 1024*512
+#define BUFFER_SIZE lo(524288)
 #define HASH_SIZE 20
 namespace fs = std::experimental::filesystem;
 #endif

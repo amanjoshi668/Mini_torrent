@@ -11,6 +11,37 @@
 #include <create_torrent.h>
 #include <respond_to_request_client.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
+bool check_wether_a_directory_or_not(string pathname)
+{
+    struct stat info;
+
+    if (stat(pathname.c_str(), &info) != 0)
+    {
+        return false;
+    }
+    else if (info.st_mode & S_IFDIR) // S_ISDIR() doesn't exist on my windows
+    {
+        return true;
+    }
+    return false;
+}
+bool check_wether_a_file_or_not(string pathname)
+{
+    struct stat info;
+
+    if (stat(pathname.c_str(), &info) != 0)
+    {
+        return false;
+    }
+    else if (info.st_mode & S_IFREG) // S_ISDIR() doesn't exist on my windows
+    {
+        return true;
+    }
+    return false;
+}
 string client_ip_2;
 vector<string> split_string(string str)
 {
@@ -39,10 +70,10 @@ map<string, vector<string>> list_of_part_contained;
 mutex list_of_part_contained_mutex;
 
 vector<string> tracker_url_combined(2);
-bool tracker_is_on;
+int tracker_is_on;
 bool change_tracker()
 {
-    tracker_is_on ^= 1;
+    tracker_is_on = (tracker_is_on + 1) % 2;
     string tracker_url = tracker_url_combined[tracker_is_on];
     cerr << tracker_url << endl;
     int port_no;
@@ -81,10 +112,6 @@ void get_files_by_part(string tracker_url, string hash_string, vector<string> pa
 {
     lo last_part = (filesize) / BUFFER_SIZE;
     lo part_to_download = filesize % BUFFER_SIZE;
-    if (part_to_download == 0)
-    {
-        part_to_download = BUFFER_SIZE;
-    }
     log_file_descriptor.lock();
     cerr << "Trying to connect to " << tracker_url << endl;
     log_file_descriptor.unlock();
@@ -273,6 +300,10 @@ void manage_download_file(vector<string> list_of_clients, int filesize)
     std ::for_each(all_threads.begin(), all_threads.end(), do_join);
     schedule();
     all_threads.clear();
+    TRV(list_of_part_contained)
+    {
+        debug(it);
+    }
     REP(1, list_of_clients.size() - 1)
     {
         list_of_part_contained_mutex.lock();
@@ -292,6 +323,14 @@ void manage_download_file(vector<string> list_of_clients, int filesize)
 
 void share(string client_ip, string filename, string mtorrent_name)
 {
+    if (!(check_wether_a_file_or_not(filename) and check_wether_a_file_or_not(mtorrent_name)))
+    {
+        log_file_descriptor.lock();
+        cout << "File Doesnot Exists" << endl;
+        cerr << "File Doesnot Exists" << endl;
+        log_file_descriptor.unlock();
+        return;
+    }
     auto generated_torrent = generate_torrent(tracker_url_combined[0], tracker_url_combined[1], filename, mtorrent_name);
     string SHA_hash = generated_torrent.location;
     generated_torrent.location = filename;
@@ -312,37 +351,26 @@ void share(string client_ip, string filename, string mtorrent_name)
     }
     log_file_descriptor.lock();
     cerr << response;
+    cout << "Successfull" << endl;
     log_file_descriptor.unlock();
     return;
 }
 
 void share_without_creating_file(string client_ip, string filename, string mtorrent_name, mtorrent &entry_to_send)
 {
+    int x;
     close(client_socket_fd);
     cerr << "Inside Share function" << endl;
     if (!change_tracker())
     {
-        if (!change_tracker)
+        if (!change_tracker())
         {
             log_file_descriptor.lock();
-            cout << "Not connected to any of the tracker" << endl;
-            cerr << "Both of the trackers are down" << endl;
+            cerr << "ERROR in connecting to both server" << endl;
             log_file_descriptor.unlock();
-            return;
+            close(client_socket_fd);
+            //continue;
         }
-        else
-        {
-            log_file_descriptor.lock();
-            cerr << "COnnected" << endl;
-            log_file_descriptor.unlock();
-        }
-    }
-    else
-    {
-        log_file_descriptor.lock();
-        //cout<<"Not connected to any of the tracker"<<endl;
-        cerr << "connected" << endl;
-        log_file_descriptor.unlock();
     }
     torrent_for_map entry;
     entry.location = filename;
@@ -365,12 +393,21 @@ void share_without_creating_file(string client_ip, string filename, string mtorr
     }
     log_file_descriptor.lock();
     cerr << response;
+    cout << "the tracker is informed" << endl;
     log_file_descriptor.unlock();
     return;
 }
 
 void remove(string client_ip, string mtorrent_name)
 {
+    if (!check_wether_a_file_or_not(mtorrent_name))
+    {
+        log_file_descriptor.lock();
+        cout << "File Doesnot Exists" << endl;
+        cerr << "File Doesnot Exists" << endl;
+        log_file_descriptor.unlock();
+        return;
+    }
     mtorrent entry_to_delete;
     ifstream fin;
     fin.open(mtorrent_name, ios::in);
@@ -392,12 +429,21 @@ void remove(string client_ip, string mtorrent_name)
     }
     log_file_descriptor.lock();
     cerr << response;
+    cout << "File Successfully Removed" << endl;
     log_file_descriptor.unlock();
     return;
 }
 
 void get_file(string path_to_mtorrent_file, string destination_path, string client_ip)
 {
+    if (!(check_wether_a_file_or_not(path_to_mtorrent_file) and check_wether_a_file_or_not(destination_path)))
+    {
+        log_file_descriptor.lock();
+        cout << "File Doesnot Exists" << endl;
+        cerr << "File Doesnot Exists" << endl;
+        log_file_descriptor.unlock();
+        return;
+    }
     mtorrent entry_to_download;
     ifstream fin;
     fin.open(path_to_mtorrent_file, ios::in);
@@ -443,6 +489,9 @@ void get_file(string path_to_mtorrent_file, string destination_path, string clie
     std ::thread T(manage_download_file, response, entry_to_download.filesize);
     T.detach();
     share_without_creating_file(client_ip, destination_path, path_to_mtorrent_file, entry_to_download);
+    log_file_descriptor.lock();
+    cout << "File is Downloading" << endl;
+    log_file_descriptor.unlock();
     return;
 }
 
@@ -567,6 +616,7 @@ void create_server(string server_ip)
 }
 void atexit_handler_1()
 {
+    cerr << "I reached here too" << endl;
     if (!change_tracker())
     {
         if (!change_tracker())
@@ -593,7 +643,7 @@ int main(int argc, char *argv[])
     tracker_url_combined[1] = string(argv[3]);
     string log_file = string(argv[4]);
     tracker_is_on = true;
-    freopen(log_file.c_str(), "w", stdout);
+    freopen(log_file.c_str(), "w", stderr);
     ///////Create a Server
     std ::thread T(create_server, client_ip);
     T.detach();
@@ -603,7 +653,7 @@ int main(int argc, char *argv[])
     while (true)
     {
         cout << "Welcome" << endl;
-        cout << "Enter share , download, ";
+        cout << "Enter share , get, remove, show downloads, close" << endl;
         string input;
         getline(cin, input);
         if (!change_tracker())
@@ -619,7 +669,27 @@ int main(int argc, char *argv[])
         }
         vector<string> input_commands = split_string(input);
         cerr << input_commands;
-        if (input_commands[0] == "share")
+        if (input_commands.size() < 1)
+        {
+            log_file_descriptor.lock();
+            cout << "You have entered less number of arguments " << endl;
+            log_file_descriptor.unlock();
+        }
+        else if (input_commands[0] == "close")
+        {
+            Message message({"CLOSEAPPLICATION", client_ip_2});
+            string encoded_message = message.encode_message();
+            send(client_socket_fd, encoded_message.c_str(), encoded_message.length(), 0);
+            close(client_socket_fd);
+            break;
+        }
+        else if (input_commands.size() < 2)
+        {
+            log_file_descriptor.lock();
+            cout << "You have entered less number of arguments " << endl;
+            log_file_descriptor.unlock();
+        }
+        else if (input_commands[0] == "share")
         {
             share(client_ip, input_commands[1], input_commands[2]);
         }
@@ -629,7 +699,16 @@ int main(int argc, char *argv[])
         }
         else if (input_commands[0] == "get")
         {
-            get_file(input_commands[1], input_commands[2], client_ip);
+            if (input_commands.size() < 3)
+            {
+                log_file_descriptor.lock();
+                cout << "You have entered less number of arguments " << endl;
+                log_file_descriptor.unlock();
+            }
+            else
+            {
+                get_file(input_commands[1], input_commands[2], client_ip);
+            }
         }
         else if (input_commands[0] == "show" and input_commands[1] == "downloads")
         {
@@ -648,13 +727,11 @@ int main(int argc, char *argv[])
             }
             downloaded_files_mutex.unlock();
         }
-        else if (input_commands[0] == "close")
+        else
         {
-            Message message({"CLOSEAPPLICATION", client_ip_2});
-            string encoded_message = message.encode_message();
-            send(client_socket_fd, encoded_message.c_str(), encoded_message.length(), 0);
-            close(client_socket_fd);
-            break;
+            log_file_descriptor.lock();
+            cout << "You have entered wrong command " << endl;
+            log_file_descriptor.unlock();
         }
         close(client_socket_fd);
     }
