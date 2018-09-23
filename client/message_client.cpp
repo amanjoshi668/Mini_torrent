@@ -99,12 +99,12 @@ vector<string> Message ::decode_message(int file)
         return this->fields_content;
     }
     this->no_of_fields = stoll(string(long_buffer));
-    cout << "I have recieved the message" << endl;
+    //cout << "I have recieved the message" << endl;
     REP(0, this->no_of_fields)
     {
         memset(long_buffer, 0, sizeof(long_buffer));
         result = recv(file, long_buffer, sizeof(lo), 0);
-        if (result < 0)
+        if (result <= 0)
         {
             this->clear();
             return this->fields_content;
@@ -120,8 +120,12 @@ vector<string> Message ::decode_message(int file)
             return this->fields_content;
         }
         string temp_field_buffer = string(field_buffer);
-        //derr2(temp_field_buffer,temp_field_buffer.length());
-        //derr(temp_field_buffer.substr(0,this->fields_size.back()));
+        //lo l=temp_field_buffer.length();
+        //string x=temp_field_buffer;
+        //derr2(x,l);
+        //string xx=temp_field_buffer.substr(0,this->fields_size.back());
+        //derr(xx);
+        //cerr<<endl<<endl;
         this->fields_content.pb(temp_field_buffer.substr(0, this->fields_size.back()));
     }
     return this->fields_content;

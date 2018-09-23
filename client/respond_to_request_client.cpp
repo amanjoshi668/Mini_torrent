@@ -27,6 +27,12 @@ string send_details(map<string, torrent_for_map> &details_of_file, string &file_
     return message.encode_message();
 }
 
+std::ifstream::pos_type FILEsize(const char *filename)
+{
+    std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
+    return in.tellg();
+}
+
 string send_file(map<string, torrent_for_map> &details_of_file, vector<string> &request)
 {
     vector<string> result;
@@ -43,6 +49,7 @@ string send_file(map<string, torrent_for_map> &details_of_file, vector<string> &
     FILE *fp = fopen(location.c_str(), "rb");
     fseek(fp, part_number * BUFFER_SIZE, SEEK_SET);
     char buffer[BUFFER_SIZE];
+    memset(buffer, 0, BUFFER_SIZE);
     lo bytes_read = fread(buffer, 1, BUFFER_SIZE, fp);
     if (bytes_read < 0)
     {
@@ -50,7 +57,16 @@ string send_file(map<string, torrent_for_map> &details_of_file, vector<string> &
         message.reload({"ERROR", "I don't have this file"});
         return message.encode_message();
     }
-    message.reload({"SUCCESS", string(buffer)});
+    string buffer_string = string(buffer);
+    lo file_size = FILEsize(file_name.c_str());
+    lo part = file_size/BUFFER_SIZE;
+    // if(part == part_number){
+    //     if(file_size%BUFFER_SIZE){
+    //         length = file_size%BUFFER_SIZE;
+    //     }
+    // }
+    derr3(part_number, buffer_string, buffer_string.substr(0,bytes_read));
+    message.reload({"SUCCESS", buffer_string.substr(0,bytes_read)});
     return message.encode_message();
 }
 //.././///fdsfjadsifadshfila

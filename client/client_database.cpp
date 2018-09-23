@@ -105,8 +105,8 @@ torrent_for_map generate_torrent(string Tracker_1_url, string Tracker_2_url, str
     fout << SHA_hash << endl;
     fout.close();
     generated_details.location = SHA_hash;
-    lo num_of_parts = (file_size+BUFFER_SIZE-1)/BUFFER_SIZE;
+    lo num_of_parts = (file_size + BUFFER_SIZE - 1) / BUFFER_SIZE;
     generated_details.part_of_file.resize(num_of_parts);
-    fill(all(generated_details.part_of_file),1);
+    fill(all(generated_details.part_of_file), 1);
     return generated_details;
 }
