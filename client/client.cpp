@@ -79,9 +79,10 @@ bool change_tracker()
 
 void get_files_by_part(string tracker_url, string hash_string, vector<string> part_no, string file_path, lo filesize)
 {
-    lo last_part = (filesize)/BUFFER_SIZE;
-    lo part_to_download = filesize%BUFFER_SIZE;
-    if(part_to_download==0){
+    lo last_part = (filesize) / BUFFER_SIZE;
+    lo part_to_download = filesize % BUFFER_SIZE;
+    if (part_to_download == 0)
+    {
         part_to_download = BUFFER_SIZE;
     }
     log_file_descriptor.lock();
@@ -128,7 +129,8 @@ void get_files_by_part(string tracker_url, string hash_string, vector<string> pa
         {
             fseek(fp, stoll(part) * BUFFER_SIZE, SEEK_SET);
             lo length_to_write = response[1].length();
-            if(stoll(part) == last_part)length_to_write = part_to_download;
+            if (stoll(part) == last_part)
+                length_to_write = part_to_download;
             std::fwrite(response[1].data(), sizeof('a'), length_to_write, fp);
             details_of_file_mutex.lock();
             details_of_file[hash_string].part_of_file[stoll(part)] = 1;
@@ -274,7 +276,7 @@ void manage_download_file(vector<string> list_of_clients, int filesize)
     REP(1, list_of_clients.size() - 1)
     {
         list_of_part_contained_mutex.lock();
-        all_threads.push_back(std ::thread(get_files_by_part, list_of_clients[i], list_of_clients.front(), list_of_part_contained[list_of_clients[i]], list_of_clients.back(),filesize));
+        all_threads.push_back(std ::thread(get_files_by_part, list_of_clients[i], list_of_clients.front(), list_of_part_contained[list_of_clients[i]], list_of_clients.back(), filesize));
         list_of_part_contained_mutex.unlock();
     }
     std ::for_each(all_threads.begin(), all_threads.end(), do_join);
@@ -318,24 +320,28 @@ void share_without_creating_file(string client_ip, string filename, string mtorr
 {
     close(client_socket_fd);
     cerr << "Inside Share function" << endl;
-    if(!change_tracker()){
-        if(!change_tracker){
+    if (!change_tracker())
+    {
+        if (!change_tracker)
+        {
             log_file_descriptor.lock();
-            cout<<"Not connected to any of the tracker"<<endl;
-            cerr<<"Both of the trackers are down"<<endl;
+            cout << "Not connected to any of the tracker" << endl;
+            cerr << "Both of the trackers are down" << endl;
             log_file_descriptor.unlock();
             return;
         }
-        else{
+        else
+        {
             log_file_descriptor.lock();
-            cerr<<"COnnected"<<endl;
+            cerr << "COnnected" << endl;
             log_file_descriptor.unlock();
         }
     }
-    else {
+    else
+    {
         log_file_descriptor.lock();
         //cout<<"Not connected to any of the tracker"<<endl;
-        cerr<<"connected"<<endl;
+        cerr << "connected" << endl;
         log_file_descriptor.unlock();
     }
     torrent_for_map entry;
@@ -559,19 +565,20 @@ void create_server(string server_ip)
 
     close(socket_fd);
 }
-void atexit_handler_1(){
+void atexit_handler_1()
+{
     if (!change_tracker())
+    {
+        if (!change_tracker())
         {
-            if (!change_tracker())
-            {
-                log_file_descriptor.lock();
-                cerr << "ERROR in connecting to both server" << endl;
-                log_file_descriptor.unlock();
-                close(client_socket_fd);
-                //continue;
-            }
+            log_file_descriptor.lock();
+            cerr << "ERROR in connecting to both server" << endl;
+            log_file_descriptor.unlock();
+            close(client_socket_fd);
+            //continue;
         }
-    Message message({"CLOSEAPPLICATION",client_ip_2});
+    }
+    Message message({"CLOSEAPPLICATION", client_ip_2});
     string encoded_message = message.encode_message();
     send(client_socket_fd, encoded_message.c_str(), encoded_message.length(), 0);
     return;
@@ -586,7 +593,7 @@ int main(int argc, char *argv[])
     tracker_url_combined[1] = string(argv[3]);
     string log_file = string(argv[4]);
     tracker_is_on = true;
-    freopen(log_file.c_str(),"w",stdout);
+    freopen(log_file.c_str(), "w", stdout);
     ///////Create a Server
     std ::thread T(create_server, client_ip);
     T.detach();
@@ -624,19 +631,30 @@ int main(int argc, char *argv[])
         {
             get_file(input_commands[1], input_commands[2], client_ip);
         }
-        else if (input_commands[0]=="show" and input_commands[1] == "downloads"){
+        else if (input_commands[0] == "show" and input_commands[1] == "downloads")
+        {
             currently_downloading_files_mutex.lock();
-            cout<<"List of Downloading Files"<<endl;
-            TRV(currently_downloading_files){
-                cout<<"[D] "<<it<<endl;
+            cout << "List of Downloading Files" << endl;
+            TRV(currently_downloading_files)
+            {
+                cout << "[D] " << it << endl;
             }
             currently_downloading_files_mutex.unlock();
             downloaded_files_mutex.lock();
-            cout<<"List of Downloaded Files"<<endl;
-            TRV(downloaded_files){
-                cout<<"[S] "<<it<<endl;
+            cout << "List of Downloaded Files" << endl;
+            TRV(downloaded_files)
+            {
+                cout << "[S] " << it << endl;
             }
             downloaded_files_mutex.unlock();
+        }
+        else if (input_commands[0] == "close")
+        {
+            Message message({"CLOSEAPPLICATION", client_ip_2});
+            string encoded_message = message.encode_message();
+            send(client_socket_fd, encoded_message.c_str(), encoded_message.length(), 0);
+            close(client_socket_fd);
+            break;
         }
         close(client_socket_fd);
     }
