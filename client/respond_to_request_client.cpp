@@ -1,3 +1,8 @@
+/*
+    Name : Aman Joshi
+    Roll No. : 2018201097
+*/
+
 #include <respond_to_request_client.h>
 
 string send_details(map<string, torrent_for_map> &details_of_file, string &file_name)
@@ -60,14 +65,14 @@ string send_file(map<string, torrent_for_map> &details_of_file, vector<string> &
     }
     string buffer_string = string(buffer);
     lo file_size = FILEsize(file_name.c_str());
-    lo part = file_size/BUFFER_SIZE;
+    lo part = file_size / BUFFER_SIZE;
     // if(part == part_number){
     //     if(file_size%BUFFER_SIZE){
     //         length = file_size%BUFFER_SIZE;
     //     }
     // }
-    derr3(part_number, buffer_string, buffer_string.substr(0,bytes_read));
-    message.reload({"SUCCESS", buffer_string.substr(0,bytes_read)});
+    derr3(part_number, buffer_string, buffer_string.substr(0, bytes_read));
+    message.reload({"SUCCESS", buffer_string.substr(0, bytes_read)});
     return message.encode_message();
 }
 //.././///fdsfjadsifadshfila
